@@ -5,11 +5,15 @@
   "main": "tableopen.js",
   "type": "module",
   "scripts": {
-    "test": "test"
+    "test": "./node_modules/mocha/bin/mocha.js --recursive"
   },
   "author": "Rodney Price",
   "license": "ISC",
   "dependencies": {
     "@fs/eslint-config-frontier-react": "^11.2.0"
+  },
+  "devDependencies": {
+    "chai": "^5.1.2",
+    "mocha": "^10.8.2"
   }
 }
