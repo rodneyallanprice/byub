@@ -3,11 +3,13 @@ import { monitorEventLoopDelay } from 'perf_hooks';
 
 let schedule = {}
 
+const witchingHour = 24 * 60
+
 const getJson = async () => {
   try {
     return JSON.parse(await fs.readFile("rest_hours.json", "utf-8"))
   } catch (error) {
-    console.log('Failed to read file.')
+    console.log(`Failed to read file 'rest_hours.json'.`)
   }
 }
 
@@ -45,6 +47,10 @@ const daysOfTheWeek = [
   'Sun'
 ]
 
+const stripWhitespace = (str) => {
+  return str.replaceAll(/\s/g, '')
+}
+
 export const nextDay = (day) => {
   if (day === 'Sun') {
     return 'Mon'
@@ -53,80 +59,86 @@ export const nextDay = (day) => {
   return daysOfTheWeek[todayIdx + 1]
 }
 
-const expandDayRange = (dayRange) => {
-  if (dayRange.length == 1) {
-    return dayRange
+export const expandDayRange = (dayRange) => {
+  const dayArray = dayRange.split('-')
+  if (dayArray.length == 1) {
+    return dayArray
   }
-  const last = dayRange.pop()
-  const days = dayRange
-  let idx = daysOfTheWeek.findIndex((day) => day == days[0])
-
+  const last = dayArray.pop()
+  const days = dayArray
+  let currentDay = days[0]
   do {
-    idx++
-    days.push(daysOfTheWeek[idx])
-  }
-  while (daysOfTheWeek[idx] != last)
+    currentDay = nextDay(currentDay)
+    days.push(currentDay)
+  } while (currentDay != last)
   return days
 }
 
-const parseDays = (dayStr) => {
-  const dayRanges = dayStr.split(',')
+export const parseDays = (daysStr) => {
+  const dayRanges = stripWhitespace(daysStr).split(',')
   const days = []
   for (const dayRange of dayRanges) {
-    days.push(...expandDayRange(dayRange.split('-')))
+    days.push(...expandDayRange(dayRange))
   }
   return days
 }
 
-export const normalizeTimeString = (timeStr, suffix) => {
+export const getOffsetFromTime = (timeStr, period) => {
   const timeParts = timeStr.split(':')
   let hours = parseInt(timeParts[0])
-  if (suffix == 'pm') {
-    hours += 12
+  let minutes = parseInt(timeParts[1]) || 0
+  if (period.toLowerCase() === 'pm') {
+    if(hours !== 12) {
+      hours += 12
+    }
   } else if (hours == 12) {
     hours -= 12
   }
-  let minutes = parseInt(timeParts[1]) || 0
   return hours * 60 + minutes
 }
 
-export const humanizeTime = (minute) => {
-  let hour = Math.floor(minute / 60)
-  const minutes = minute % 60
+export const getTimeFromOffset = (offset) => {
+  let hour = Math.floor(offset / 60)
+  const minutes = offset % 60
   let period
-  if (hour > 12) {
+  if(hour === 0) {
+    hour = 12
+    period = 'am'
+  } else if(hour === 12) {
+    period = 'pm'
+  } else if(hour > 12) {
     period = 'pm'
     hour -= 12
   } else {
     period = 'am'
   }
-  if (hour === 0) {
-    hour = 12
-  }
   return `${hour}:${minutes.toString().padStart(2, '0')} ${period}`
 }
 
-const parseTimeRange = (timeStr) => {
-  // if (timeStr == '11 am - 12:30 am') {
-  //     console.log('stop here')
-  // }
-  const rangeParts = timeStr.split(' - ')
-  if (rangeParts.length != 2) {
-    throw new Error(`Unexpected time syntax: ${timeStr}`)
-  }
-  const startParts = rangeParts[0].split(' ')
-  const start = normalizeTimeString(startParts[0], startParts[1])
-  const stopParts = rangeParts[1].split(' ')
-  let stop
-  let spillOver
-  if (stopParts[1] == 'am') {
-    stop = normalizeTimeString('12', 'pm')
-    spillOver = normalizeTimeString(stopParts[0], stopParts[1])
-  } else {
-    stop = normalizeTimeString(stopParts[0], stopParts[1])
-    spillOver = 0
-  }
+export const parseTime = (timeStr) => {
+  const parts = timeStr.split(' ')
+  return getOffsetFromTime(parts[0], parts[1])
+}
 
+export const parseTimeRange = (timeRange) => {
+  const rangeParts = timeRange.split(' - ')
+  if (rangeParts.length != 2) {
+    throw new Error(`Unexpected time syntax: ${timeRange}`)
+  }
+  const startOffset = parseTime(rangeParts[0])
+  const stopOffset = parseTime(rangeParts[1])
+
+  const start = startOffset
+  let stop
+  let spillOver = 0
+  if(stopOffset >= startOffset) {
+    stop = stopOffset
+  } else {
+    stop = witchingHour
+    if(stopOffset !== 0) {
+      spillOver = stopOffset
+    }
+  }
   return { start, stop, spillOver }
 }
 
@@ -158,14 +170,13 @@ const buildIndex = async () => {
   const restaurants = await getJson()
   restaurants.forEach((restaurant) => {
     index[restaurant.name] = {}
-    // console.log(`------ ${restaurant.name} ------`)
     restaurant.times.forEach((schedule) => {
       const parts = schedule.split(' ')
       const dayParts = []
       while (isNaN(parts[0][0])) {
         dayParts.push(parts.shift())
       }
-      const days = parseDays(dayParts.join(''))
+      const days = parseDays(dayParts.join(' '))
 
       const openTimes = parseTimeRange(parts.join(' '))
       updateIndex(index, restaurant.name, days, openTimes)
@@ -176,23 +187,20 @@ const buildIndex = async () => {
 
 const validateTime = (timestr) => {
   const res = /\b((1[0-2]|0?[1-9]):([0-5][0-9])([AaPp][Mm]))/.test(timestr)
-  console.log(res)
   if (!res) {
     throw new Error('Invalid time')
-  } else {
-    console.log('good')
   }
 }
 
-const parseTime = (timeStr) => {
+const parseRequestTime = (timeStr) => {
   const stripped = timeStr.replaceAll(/\s/g, '')
   validateTime(stripped)
   const period = stripped.slice(-2).toLowerCase()
   const time = stripped.slice(0, stripped.length - 2)
-  return normalizeTimeString(time, period)
+  return getOffsetFromTime(time, period)
 }
 
-const parseDay = (dayStr) => {
+const parseRequestDay = (dayStr) => {
   const stripped = dayStr.replaceAll(/\s/g, '').toLowerCase()
   const day = recognizedDayStrings[stripped]
   if (!day) {
@@ -239,7 +247,7 @@ const getOpenTables = (day, minute) => {
       }
       openRestaurants.push({
         name: restaurant,
-        closes: humanizeTime(closes)
+        closes: getTimeFromOffset(closes)
       })
     }
   })
@@ -250,8 +258,8 @@ export const findOpenTables = async (dayStr, time) => {
   if (Object.keys(schedule).length === 0) {
     schedule = await buildIndex()
   }
-  const day = parseDay(dayStr)
-  const minute = parseTime(time)
+  const day = parseRequestDay(dayStr)
+  const minute = parseRequestTime(time)
 
   const list = getOpenTables(day, minute)
   return list
