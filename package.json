@@ -1,0 +1,15 @@
+{
+  "name": "byub",
+  "version": "1.0.0",
+  "description": "Application Exercise",
+  "main": "tableopen.js",
+  "type": "module",
+  "scripts": {
+    "test": "test"
+  },
+  "author": "Rodney Price",
+  "license": "ISC",
+  "dependencies": {
+    "@fs/eslint-config-frontier-react": "^11.2.0"
+  }
+}
