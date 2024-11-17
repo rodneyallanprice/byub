@@ -74,7 +74,7 @@ export const expandDayRange = (dayRange) => {
   return days
 }
 
-export const parseDays = (daysStr) => {
+export const parseDayRange = (daysStr) => {
   const dayRanges = stripWhitespace(daysStr).split(',')
   const days = []
   for (const dayRange of dayRanges) {
@@ -142,22 +142,25 @@ export const parseTimeRange = (timeRange) => {
   return { start, stop, spillOver }
 }
 
-const updateIndex = (index, name, days, times) => {
-  const schedule = index[name]
+export const insertSchedule = (masterSchedule, name, days, times) => {
+  if(!masterSchedule[name]) {
+    masterSchedule[name] = {}
+  }
+  const bizSchedule = masterSchedule[name]
   for (const day of days) {
-    if (!schedule[day]) {
-      schedule[day] = []
+    if (!bizSchedule[day]) {
+      bizSchedule[day] = []
     }
-    schedule[day].push({
+    bizSchedule[day].push({
       open: times.start,
       closed: times.stop
     })
     if (times.spillOver) {
       const tomorrow = nextDay(day)
-      if (!schedule[tomorrow]) {
-        schedule[tomorrow] = []
+      if (!bizSchedule[tomorrow]) {
+        bizSchedule[tomorrow] = []
       }
-      schedule[tomorrow].push({
+      bizSchedule[tomorrow].push({
         open: 0,
         closed: times.spillOver
       })
@@ -165,24 +168,35 @@ const updateIndex = (index, name, days, times) => {
   }
 }
 
-const buildIndex = async () => {
-  const index = {}
+const splitDaysFromTimeRange = (schedule) => {
+  const parts = schedule.split(' ')
+  const dayParts = []
+
+  while (Number.isNaN(Number(parts[0][0]))) {
+    dayParts.push(parts.shift())
+  }
+
+  const dayRange = dayParts.join(' ')
+  const timeRange = parts.join(' ')
+
+  return {
+    dayRange,
+    timeRange
+  }
+}
+
+export const buildMasterSchedule = async () => {
+  const masterSchedule = {}
   const restaurants = await getJson()
   restaurants.forEach((restaurant) => {
-    index[restaurant.name] = {}
     restaurant.times.forEach((schedule) => {
-      const parts = schedule.split(' ')
-      const dayParts = []
-      while (isNaN(parts[0][0])) {
-        dayParts.push(parts.shift())
-      }
-      const days = parseDays(dayParts.join(' '))
-
-      const openTimes = parseTimeRange(parts.join(' '))
-      updateIndex(index, restaurant.name, days, openTimes)
+      const { dayRange, timeRange} = splitDaysFromTimeRange(schedule)
+      const days = parseDayRange(dayRange)
+      const openTimes = parseTimeRange(timeRange)
+      insertSchedule(masterSchedule, restaurant.name, days, openTimes)
     })
   })
-  return index
+  return masterSchedule
 }
 
 const validateTime = (timestr) => {
@@ -256,7 +270,7 @@ const getOpenTables = (day, minute) => {
 
 export const findOpenTables = async (dayStr, time) => {
   if (Object.keys(schedule).length === 0) {
-    schedule = await buildIndex()
+    schedule = await buildMasterSchedule()
   }
   const day = parseRequestDay(dayStr)
   const minute = parseRequestTime(time)

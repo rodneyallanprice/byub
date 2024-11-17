@@ -1,5 +1,15 @@
 import { expect } from 'chai'
-import {expandDayRange, getOffsetFromTime, getTimeFromOffset, nextDay, parseDays, parseTime, parseTimeRange} from '../../src/schedule.js'
+import {expandDayRange, getOffsetFromTime, getTimeFromOffset, nextDay, parseDayRange, parseTime, parseTimeRange, insertSchedule, buildMasterSchedule} from '../../src/schedule.js'
+
+const inRange = (daySchedule, offset) => {
+    let found = false
+    daySchedule.forEach((sched) => {
+        if(offset >= sched.open && offset < sched.closed) {
+            found = true
+        }
+    })
+    return found
+}
 
 describe('Test schedule.js', () => {
     describe('Test nextDay()', () => {
@@ -34,18 +44,18 @@ describe('Test schedule.js', () => {
             })
         })
     })
-    describe('Test parseDays()', () => {
+    describe('Test parseDayRange()', () => {
         describe('when given a string of day ranges', () => {
             it('should return an array of all days', () => {
-                let expanded = parseDays('Mon-Fri')
+                let expanded = parseDayRange('Mon-Fri')
                 expect(JSON.stringify(expanded)).to.be.equal('["Mon","Tue","Wed","Thu","Fri"]')
-                expanded = parseDays('Mon-Thu, Sun')
+                expanded = parseDayRange('Mon-Thu, Sun')
                 expect(JSON.stringify(expanded)).to.be.equal('["Mon","Tue","Wed","Thu","Sun"]')
-                expanded = parseDays('Mon, Wed, Fri-Sat')
+                expanded = parseDayRange('Mon, Wed, Fri-Sat')
                 expect(JSON.stringify(expanded)).to.be.equal('["Mon","Wed","Fri","Sat"]')
-                expanded = parseDays('Mon, Wed,Fri-Sat')
+                expanded = parseDayRange('Mon, Wed,Fri-Sat')
                 expect(JSON.stringify(expanded)).to.be.equal('["Mon","Wed","Fri","Sat"]')
-                expanded = parseDays('Sat')
+                expanded = parseDayRange('Sat')
                 expect(JSON.stringify(expanded)).to.be.equal('["Sat"]')
             })
         })
@@ -127,6 +137,61 @@ describe('Test schedule.js', () => {
                 expect(JSON.stringify(offsets)).to.be.equal('{"start":660,"stop":1440,"spillOver":60}')
                 offsets = parseTimeRange('8:25 AM - 12 pm')
                 expect(JSON.stringify(offsets)).to.be.equal('{"start":505,"stop":720,"spillOver":0}')
+            })
+        })
+    })
+    describe('Test insertSchedule()', () => {
+        describe('when given a schedule for a restaurant', () => {
+            const inRange = (daySchedule, offset) => {
+                let found = false
+                daySchedule.forEach((sched) => {
+                    if(offset >= sched.open && offset < sched.closed) {
+                        found = true
+                    }
+                })
+                return found
+            }
+            describe('is open past midnight', () => {
+                it('should create openings on both days', () => {
+                    const master = {}
+                    insertSchedule(master, 'Thai Stick Restaurant', ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"], {start: 11*60, stop: 24*60, spillOver: 60})
+                    expect(typeof(master['Thai Stick Restaurant'])).to.be.equal('object')
+                    expect(Object.keys(master['Thai Stick Restaurant']).length).to.be.equal(7)
+                    expect(master['Thai Stick Restaurant'].Mon.length).to.be.equal(2)
+                    expect(inRange(master['Thai Stick Restaurant'].Mon, 10 * 60)).to.be.false
+                    expect(inRange(master['Thai Stick Restaurant'].Mon, 10)).to.be.true
+                    expect(inRange(master['Thai Stick Restaurant'].Mon, 1439)).to.be.true
+                })
+            })
+            describe('is closed early and late', () => {
+                it('should create just oneopenings on the day', () => {
+                    const master = {}
+                    insertSchedule(master, 'Chili Lemon Garlic', ["Mon","Tue","Wed","Thu","Fri"], {start: 11*60, stop: 22*60, spillOver: 0})
+                    expect(typeof(master['Chili Lemon Garlic'])).to.be.equal('object')
+                    expect(Object.keys(master['Chili Lemon Garlic']).length).to.be.equal(5)
+                    expect(master['Chili Lemon Garlic'].Mon.length).to.be.equal(1)
+                    expect(inRange(master['Chili Lemon Garlic'].Mon, 10 * 60)).to.be.false
+                    expect(inRange(master['Chili Lemon Garlic'].Mon, 12 * 60)).to.be.true
+                    expect(inRange(master['Chili Lemon Garlic'].Mon, 1380)).to.be.false
+                })
+            })
+
+        })
+    })
+
+    describe('Test buildMasterSchedule()', () => {
+        describe('when rest_hours.json if found', () => {
+            it('should return a master schedule', async () => {
+                const master = await buildMasterSchedule()
+                expect(Object.keys(master).length).to.be.equal(51)
+                expect(typeof(master['Penang Garden'])).to.be.equal('object')
+                expect(Object.keys(master['Penang Garden']).length).to.be.equal(7)
+                expect(master['Penang Garden'].Mon.length).to.be.equal(1)
+                expect(inRange(master['Penang Garden'].Mon, 22 * 60)).to.be.false
+                expect(inRange(master['Penang Garden'].Fri, 22 * 60)).to.be.true
+                expect(inRange(master['Penang Garden'].Sun, 22 * 60)).to.be.true
+                expect(inRange(master['Penang Garden'].Mon, 10)).to.be.false
+                expect(inRange(master['Penang Garden'].Sat, 1439)).to.be.false
             })
         })
     })
