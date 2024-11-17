@@ -83,6 +83,23 @@ export const parseDayRange = (daysStr) => {
   return days
 }
 
+export const splitDaysFromTimeRange = (schedule) => {
+  const parts = schedule.split(' ')
+  const dayParts = []
+
+  while (Number.isNaN(Number(parts[0][0]))) {
+    dayParts.push(parts.shift())
+  }
+
+  const dayRange = dayParts.join(' ')
+  const timeRange = parts.join(' ')
+
+  return {
+    dayRange,
+    timeRange
+  }
+}
+
 export const getOffsetFromTime = (timeStr, period) => {
   const timeParts = timeStr.split(':')
   let hours = parseInt(timeParts[0])
@@ -165,23 +182,6 @@ export const insertSchedule = (masterSchedule, name, days, times) => {
         closed: times.spillOver
       })
     }
-  }
-}
-
-const splitDaysFromTimeRange = (schedule) => {
-  const parts = schedule.split(' ')
-  const dayParts = []
-
-  while (Number.isNaN(Number(parts[0][0]))) {
-    dayParts.push(parts.shift())
-  }
-
-  const dayRange = dayParts.join(' ')
-  const timeRange = parts.join(' ')
-
-  return {
-    dayRange,
-    timeRange
   }
 }
 

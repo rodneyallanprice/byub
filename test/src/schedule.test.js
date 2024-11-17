@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import {expandDayRange, getOffsetFromTime, getTimeFromOffset, nextDay, parseDayRange, parseTime, parseTimeRange, insertSchedule, buildMasterSchedule} from '../../src/schedule.js'
+import {expandDayRange, getOffsetFromTime, getTimeFromOffset, nextDay, parseDayRange, parseTime, parseTimeRange, insertSchedule, buildMasterSchedule, splitDaysFromTimeRange} from '../../src/schedule.js'
 
 const inRange = (daySchedule, offset) => {
     let found = false
@@ -60,6 +60,31 @@ describe('Test schedule.js', () => {
             })
         })
     })
+
+    describe('Test splitDaysFromTimeRange', () => {
+        describe('when a restaurant schedule is passed in with a single day', () => {
+            it('should split the day range from the time range', () => {
+                const {dayRange, timeRange} = splitDaysFromTimeRange('Sun 10 am - 11 pm')
+                expect(dayRange).to.be.equal('Sun')
+                expect(timeRange).to.be.equal('10 am - 11 pm')
+            })
+        })
+        describe('when a restaurant schedule is passed in with a single day range', () => {
+            it('should split the day range from the time range', () => {
+                const {dayRange, timeRange} = splitDaysFromTimeRange('Mon-Thu 11:30 am - 10 pm')
+                expect(dayRange).to.be.equal('Mon-Thu')
+                expect(timeRange).to.be.equal('11:30 am - 10 pm')
+            })
+        })
+        describe('when a restaurant schedule is passed in with multiple day ranges', () => {
+            it('should split the day range from the time range', () => {
+                const {dayRange, timeRange} = splitDaysFromTimeRange('Mon-Thu, Sun 11:30 am - 10 pm')
+                expect(dayRange).to.be.equal('Mon-Thu, Sun')
+                expect(timeRange).to.be.equal('11:30 am - 10 pm')
+            })
+        })
+    })
+
     describe('Test getOffSetFromTime()', () => {
         describe('when given a human readable time', () => {
             it('should return the number of minutes since midnight', () => {
