@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs'
 
-const witchingHour = 24 * 60
+export const witchingHour = 24 * 60
 
 const getJson = async () => {
   return JSON.parse(await fs.readFile('rest_hours.json', 'utf-8'))
@@ -16,13 +16,13 @@ export const nextDay = (day) => {
   if (day === 'Sun') {
     return 'Mon'
   }
-  const todayIdx = daysOfTheWeek.findIndex((weekday) => weekday == day)
+  const todayIdx = daysOfTheWeek.findIndex((weekday) => weekday === day)
   return daysOfTheWeek[todayIdx + 1]
 }
 
 export const expandDayRange = (dayRange) => {
   const dayArray = dayRange.split('-')
-  if (dayArray.length == 1) {
+  if (dayArray.length === 1) {
     return dayArray
   }
   const last = dayArray.pop()
@@ -69,7 +69,7 @@ export const getOffsetFromTime = (timeStr, period) => {
     if (hours !== 12) {
       hours += 12
     }
-  } else if (hours == 12) {
+  } else if (hours === 12) {
     hours -= 12
   }
   return hours * 60 + minutes
