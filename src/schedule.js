@@ -3,7 +3,7 @@ import { promises as fs } from 'fs'
 export const witchingHour = 24 * 60
 
 const getJson = async () => {
-  return JSON.parse(await fs.readFile('rest_hours.json', 'utf-8'))
+  return JSON.parse(await fs.readFile('data/rest_hours.json', 'utf-8'))
 }
 
 const daysOfTheWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
