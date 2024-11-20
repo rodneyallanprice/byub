@@ -117,3 +117,7 @@ export const findOpenTables = (dayStr, time) => {
 export const init = async () => {
   schedule = await buildMasterSchedule()
 }
+
+export const lookupRequest = ({ day, time }) => {
+  return findOpenTables(day, time)
+}

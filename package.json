@@ -2,7 +2,7 @@
   "name": "byub",
   "version": "1.0.0",
   "description": "Application Exercise",
-  "main": "tableopen.js",
+  "main": "index.js",
   "type": "module",
   "scripts": {
     "test": "./node_modules/mocha/bin/mocha.js --recursive"
@@ -10,9 +10,11 @@
   "author": "Rodney Price",
   "license": "ISC",
   "dependencies": {
-    "@fs/eslint-config-frontier-react": "^11.2.0"
+    "body-parser": "^1.20.3",
+    "express": "^4.21.1"
   },
   "devDependencies": {
+    "@fs/eslint-config-frontier-react": "^11.2.0",
     "chai": "^5.1.2",
     "mocha": "^10.8.2"
   }
