@@ -8,6 +8,12 @@ Assumptions:
 - All times are local — don’t worry about time zone - awareness
 - The JSON file is well-formed but data may need to be further parsed
 
+Run Tests
+===================
+
+```
+npm run test
+```
 
 
 Usage - Command line:
