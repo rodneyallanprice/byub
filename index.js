@@ -17,7 +17,7 @@ app.listen(port, () => {
 
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://eats.priceswrite.org"],
+    origin: ["http://localhost:3000", "https://eats.priceswrite.org"],
     methods: ["POST"],
   })
 );
