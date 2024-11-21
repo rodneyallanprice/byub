@@ -1,24 +1,33 @@
 /* eslint-disable import/no-extraneous-dependencies */
-import express from 'express'
-import bodyParser from 'body-parser'
-import { sendErrorResponse } from './src/utils.js'
-import { init, lookupRequest } from './src/lookup.js'
+import express from "express";
+import bodyParser from "body-parser";
+import { sendErrorResponse } from "./src/utils.js";
+import { init, lookupRequest } from "./src/lookup.js";
+import cors from "cors";
 
-init()
+init();
 
-const app = express()
-const jsonParser = bodyParser.json()
-const port = 3460
+const app = express();
+const jsonParser = bodyParser.json();
+const port = 3460;
 
 app.listen(port, () => {
-  console.log(`Server is listening on port ${port}`)
-})
+  console.log(`Server is listening on port ${port}`);
+});
 
-app.post('/open', jsonParser, (req, res) => {
+app.use(
+  cors({
+    origin: ["http://localhost:3000", "http://eats.priceswrite.org"],
+    methods: ["POST"],
+  })
+);
+
+app.post("/open", jsonParser, (req, res) => {
   try {
-    const list = lookupRequest(req.body)
-    res.json(list)
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    const list = lookupRequest(req.body);
+    res.json(list);
   } catch (err) {
-    sendErrorResponse(res, err)
+    sendErrorResponse(res, err);
   }
-})
+});
